@@ -28,7 +28,7 @@ def keep_alive():
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 ADMIN_ID = os.environ.get("ID") # الايدي الخاص بك الذي وضعته في ريندر لتعطيك صلاحيات لا نهائية
 CHANNEL_USERNAME = "@ZenoX_Tools"
-BOT_USERNAME = "VONE_BOT" # استبدله بيوزر البوت الفعلي بدون @
+BOT_USERNAME = "VO_NE_bot" # استبدله بيوزر البوت الفعلي بدون @
 
 if not BOT_TOKEN:
     raise ValueError("❌ خطأ: لم يتم العثور على التوكن.")
