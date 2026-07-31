@@ -24,16 +24,26 @@ def keep_alive():
     t.start()
 # =========================================================
 
-# جلب المتغيرات
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_ID = os.environ.get("ID") # الايدي الخاص بك الذي وضعته في ريندر لتعطيك صلاحيات لا نهائية
+ADMIN_ID = os.environ.get("ID")
 CHANNEL_USERNAME = "@ZenoX_Tools"
-BOT_USERNAME = "VO_NE_bot" # استبدله بيوزر البوت الفعلي بدون @
+BOT_USERNAME = "VONE_BOT" # يوزر بوتك الفعلي بدون @
 
 if not BOT_TOKEN:
     raise ValueError("❌ خطأ: لم يتم العثور على التوكن.")
 
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# قائمة الأصوات الموسعة والكاملة مع أسمائها المعروضة
+VOICES_LIST = {
+    "ar-SA-HamedNeural": {"name": "👨 حامد (سعودي - رسمي)", "sample": "أهلاً بك، هذا نموذج لصوت حامد."},
+    "ar-SA-ZariyahNeural": {"name": "👩 زارية (سعودية - هادئ)", "sample": "أهلاً بك، هذا نموذج لصوت زارية."},
+    "ar-AE-HamdanNeural": {"name": "👨 حمدان (إماراتي - وثائقي)", "sample": "أهلاً بك، هذا نموذج لصوت حمدان."},
+    "ar-EG-SalmaNeural": {"name": "👩 سلمى (مصري - حيوي)", "sample": "أهلاً بك، هذا نموذج لصوت سلمى."},
+    "ar-EG-ShakirNeural": {"name": "👨 شاكر (مصري - عميق)", "sample": "أهلاً بك، هذا نموذج لصوت شاكر."},
+    "ar-IQ-BasselNeural": {"name": "👨 باسل (عراقي - أصيل)", "sample": "أهلاً بك، هذا نموذج لصوت باسل."},
+    "ar-JO-SanaNeural": {"name": "👩 سناء (أردني - دافئ)", "sample": "أهلاً بك، هذا نموذج لصوت سناء."}
+}
 
 # ================= قاعدة البيانات =================
 def init_db():
@@ -54,23 +64,18 @@ def get_user(user_id):
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     row = c.fetchone()
-    
     today = datetime.date.today().isoformat()
     
-    # إذا كان مستخدم جديد
     if row is None:
         c.execute("INSERT INTO users (user_id, last_reset) VALUES (?, ?)", (user_id, today))
         conn.commit()
         row = {'user_id': user_id, 'free_seconds': 100, 'paid_seconds': 0, 'last_reset': today, 'voice': 'ar-SA-HamedNeural'}
-    
-    # تجديد الثواني المجانية يومياً (100 ثانية)
     elif row['last_reset'] != today:
         c.execute("UPDATE users SET free_seconds = 100, last_reset = ? WHERE user_id = ?", (today, user_id))
         conn.commit()
         row = dict(row)
         row['free_seconds'] = 100
         row['last_reset'] = today
-        
     conn.close()
     return dict(row)
 
@@ -97,7 +102,6 @@ def add_paid_seconds(user_id, seconds):
     conn.close()
 # =========================================================
 
-# ================= الاشتراك الإجباري =================
 def check_sub(user_id):
     try:
         if str(user_id) == str(ADMIN_ID): return True
@@ -111,13 +115,11 @@ def sub_markup():
     markup.add(InlineKeyboardButton("📢 الاشتراك في القناة", url=f"https://t.me/{CHANNEL_USERNAME[1:]}"))
     markup.add(InlineKeyboardButton("✅ تحقق من الاشتراك", callback_data="check_sub"))
     return markup
-# =========================================================
 
-# ================= القوائم والأزرار =================
 def main_menu_markup():
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
-        InlineKeyboardButton("🎙️ عرض الأصوات المتاحة", callback_data="voices_menu"),
+        InlineKeyboardButton("🎙️ قائمة الأصوات والمعاينة", callback_data="voices_menu"),
         InlineKeyboardButton("⭐ شراء رصيد إضافي (بالنجوم)", callback_data="buy_menu"),
         InlineKeyboardButton("🎁 رصيدي و رابط الدعوة", callback_data="my_balance")
     )
@@ -125,14 +127,13 @@ def main_menu_markup():
 
 def voices_markup():
     markup = InlineKeyboardMarkup(row_width=1)
-    # أصوات مايكروسوفت العربية
-    markup.add(
-        InlineKeyboardButton("👨 حامد (سعودي - رسمي)", callback_data="setvoice_ar-SA-HamedNeural"),
-        InlineKeyboardButton("👩 زارية (سعودية - هادئ)", callback_data="setvoice_ar-SA-ZariyahNeural"),
-        InlineKeyboardButton("👨 حمدان (إماراتي - وثائقي)", callback_data="setvoice_ar-AE-HamdanNeural"),
-        InlineKeyboardButton("👩 سلمى (مصري - حيوي)", callback_data="setvoice_ar-EG-SalmaNeural"),
-        InlineKeyboardButton("🔙 رجوع", callback_data="back_main")
-    )
+    for v_key, v_info in VOICES_LIST.items():
+        # لكل صوت زر للاختيار وزر لمعاينة الصوت بجانبه في نفس السطر أو تحته
+        markup.add(
+            InlineKeyboardButton(f"✅ اختيار: {v_info['name']}", callback_data=f"setvoice_{v_key}"),
+            InlineKeyboardButton(f"🎧 معاينة الصوت", callback_data=f"preview_{v_key}")
+        )
+    markup.add(InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="back_main"))
     return markup
 
 def buy_markup():
@@ -145,30 +146,26 @@ def buy_markup():
     )
     return markup
 
-# ================= أوامر البداية =================
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     user_id = message.from_user.id
     text = message.text
     
-    # نظام الإحالة (الدعوات)
     if " " in text:
         referrer_id = text.split(" ")[1]
         try:
             if int(referrer_id) != user_id:
                 conn = sqlite3.connect('vone_database.sqlite')
                 c = conn.cursor()
-                # التأكد أن المستخدم جديد تماماً
                 c.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
                 if c.fetchone() is None:
-                    # إضافة 50 ثانية مدفوعة للداعي مكافأة
                     c.execute("UPDATE users SET paid_seconds = paid_seconds + 50 WHERE user_id = ?", (int(referrer_id),))
                     conn.commit()
                     bot.send_message(int(referrer_id), f"🎉 مبروك! قام شخص بالدخول عبر رابطك، تمت إضافة 50 ثانية لرصيدك.")
                 conn.close()
         except: pass
 
-    get_user(user_id) # تهيئة المستخدم في القاعدة
+    get_user(user_id)
     
     if not check_sub(user_id):
         bot.reply_to(message, f"عذراً عزيزي ✋\nعليك الاشتراك في القناة الرسمية للبوت أولاً لتتمكن من استخدامه.\n\nاشترك ثم اضغط تحقق:", reply_markup=sub_markup())
@@ -177,10 +174,9 @@ def start_cmd(message):
     bot.reply_to(message, 
                  "مرحباً بك في **VONE** 🎙️\n\n"
                  "منصتك الذكية لتحويل النصوص إلى أصوات طبيعية نابضة بالحياة.\n"
-                 "اختر من القائمة أدناه أو أرسل لي أي نص مباشرة لبدء التوليد!", 
+                 "اختر من القائمة أدناه أو أرسل لي أي نص مباشرة:", 
                  reply_markup=main_menu_markup())
 
-# ================= استجابة الأزرار (Callback) =================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     user_id = call.from_user.id
@@ -197,8 +193,23 @@ def callback_handler(call):
         return
 
     elif data == "voices_menu":
-        bot.edit_message_text("اختر الصوت الذي تفضله:", call.message.chat.id, call.message.message_id, reply_markup=voices_markup())
+        bot.edit_message_text("🎙️ **قائمة الأصوات المتاحة ومعايرتها:**\nيمكنك سماع عينة صوتية لأي صوت قبل اعتماده:", call.message.chat.id, call.message.message_id, reply_markup=voices_markup(), parse_mode="Markdown")
         
+    elif data.startswith("preview_"):
+        v_key = data.split("_")[1]
+        v_info = VOICES_LIST.get(v_key)
+        bot.answer_callback_query(call.id, f"🎧 جاري توليد عينة الصوت...")
+        
+        async def send_preview():
+            sample_file = f"preview_{user_id}.mp3"
+            communicate = edge_tts.Communicate(v_info['sample'], v_key)
+            await communicate.save(sample_file)
+            with open(sample_file, 'rb') as audio:
+                bot.send_voice(call.message.chat.id, audio, caption=f"🎧 عينة صوتية لـ: {v_info['name']}")
+            os.remove(sample_file)
+        
+        asyncio.run(send_preview())
+
     elif data.startswith("setvoice_"):
         voice_id = data.split("_")[1]
         update_voice(user_id, voice_id)
@@ -221,29 +232,25 @@ def callback_handler(call):
                f"🔗 رابطك:\n`{ref_link}`")
         bot.edit_message_text(msg, call.message.chat.id, call.message.message_id, reply_markup=main_menu_markup(), parse_mode="Markdown")
 
-    # معالجة الشراء بالنجوم
     elif data.startswith("buy_"):
         amount = int(data.split("_")[1])
-        prices_map = {1000: 50, 2500: 100, 7500: 250} # عدد الثواني: عدد النجوم
+        prices_map = {1000: 50, 2500: 100, 7500: 250}
         stars = prices_map[amount]
-        
         prices = [LabeledPrice(label=f"{amount} ثانية", amount=stars)]
         bot.send_invoice(
             call.message.chat.id,
             title="شراء رصيد VONE",
             description=f"باقة {amount} ثانية لتوليد الصوت.",
             invoice_payload=f"buy_{amount}",
-            provider_token="", # يترك فارغاً لأن النجوم هي عملة تيليجرام الأصلية
+            provider_token="",
             currency="XTR",
             prices=prices
         )
 
-# تأكيد عملية الدفع
 @bot.pre_checkout_query_handler(func=lambda query: True)
 def checkout(pre_checkout_query):
     bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
-# عند نجاح الدفع
 @bot.message_handler(content_types=['successful_payment'])
 def got_payment(message):
     payload = message.successful_payment.invoice_payload
@@ -251,7 +258,6 @@ def got_payment(message):
     add_paid_seconds(message.chat.id, seconds_bought)
     bot.reply_to(message, f"🎉 شكراً لك! تم استلام الدفع بنجاح. تمت إضافة {seconds_bought} ثانية لرصيدك الدائم.")
 
-# ================= توليد الصوت (الذكاء) =================
 async def generate_audio(text, output_file, voice):
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(output_file)
@@ -267,32 +273,27 @@ def handle_text(message):
     text = message.text
     u = get_user(user_id)
     total_balance = u['free_seconds'] + u['paid_seconds']
-    
-    # الإدمن (أنت) له رصيد لا نهائي ولا يخضع للقيود
     is_admin = str(user_id) == str(ADMIN_ID)
     
     if total_balance <= 0 and not is_admin:
-        bot.reply_to(message, "❌ لقد نفد رصيدك من الثواني لهذا اليوم.\nيمكنك شراء المزيد من النجوم أو انتظار التجديد اليومي.", reply_markup=main_menu_markup())
+        bot.reply_to(message, "❌ لقد نفد رصيدك من الثواني لهذا اليوم.", reply_markup=main_menu_markup())
         return
 
     processing_msg = bot.reply_to(message, "⏳ جاري تحليل النص وتوليد الصوت...")
     audio_file = f"vone_{user_id}_{message.message_id}.mp3"
     
     try:
-        # التوليد
         asyncio.run(generate_audio(text, audio_file, u['voice']))
         
-        # حساب مدة الصوت الفعلي بالثواني بدقة
         audio_meta = MP3(audio_file)
         duration = int(audio_meta.info.length)
-        if duration == 0: duration = 1 # حد أدنى
+        if duration == 0: duration = 1
         
         if duration > total_balance and not is_admin:
             os.remove(audio_file)
             bot.edit_message_text(f"❌ النص طويل جداً! سيستغرق {duration} ثانية، بينما رصيدك الكلي {total_balance} ثانية فقط.", message.chat.id, processing_msg.message_id)
             return
 
-        # الخصم الذكي (يخصم من المجاني أولاً، ثم المدفوع)
         free_used = 0
         paid_used = 0
         
@@ -304,7 +305,7 @@ def handle_text(message):
                 paid_used = duration - free_used
             
             update_balance(user_id, free_used, paid_used)
-            u = get_user(user_id) # تحديث البيانات بعد الخصم
+            u = get_user(user_id)
         
         rem_total = (u['free_seconds'] + u['paid_seconds']) if not is_admin else "∞ (أنت الأدمن 👑)"
         
@@ -329,5 +330,6 @@ if __name__ == '__main__':
     keep_alive()
     print("🚀 البوت وقاعدة البيانات يعملان بنجاح...")
     bot.infinity_polling()
+
 
 
