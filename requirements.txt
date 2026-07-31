@@ -1,3 +1,4 @@
 pyTelegramBotAPI
 edge-tts
 flask
+mutagen
